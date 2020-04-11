@@ -1,9 +1,12 @@
 package io.spring.moviecatalogueservice.resources;
 
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import io.spring.moviecatalogueservice.models.CatalogueItem;
 import io.spring.moviecatalogueservice.models.Movie;
 import io.spring.moviecatalogueservice.models.Rating;
 import io.spring.moviecatalogueservice.models.UserRating;
+import io.spring.moviecatalogueservice.services.MovieInfo;
+import io.spring.moviecatalogueservice.services.MovieRating;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -21,39 +24,22 @@ public class MovieCatalogueResource {
     @Autowired
     private RestTemplate restTemplate;
 
-    /*
     @Autowired
-    private WebClient.Builder webClientBuilder;
+    MovieInfo movieInfo;
 
-     */
+    @Autowired
+    MovieRating movieRating;
 
     @GetMapping("/{userId}")
-    public List<CatalogueItem> getCatalogue(@PathVariable("userId") String userId)
-    {
-
-
+    public List<CatalogueItem> getCatalogue(@PathVariable("userId") String userId) {
 
         //get all rated movie Ids
-        UserRating ratings = restTemplate.getForObject("http://movie-rating-service/ratingService/users/"+userId, UserRating.class);
-
-        //for each movie ID call movieInfo service
+        UserRating ratings = movieRating.getUserRating(userId);
         return ratings.getUserRating().stream().map(rating -> {
-            Movie movie = restTemplate.getForObject("http://movie-info-service/movies/" + rating.getMovieId(), Movie.class);
-
-            /*
-                Movie movie = webClientBuilder.build()
-                        .get()
-                        .uri("http://localhost:8082/movies/" + rating.getMovieId())
-                        .retrieve()
-                        .bodyToMono(Movie.class)
-                        .block();
-             */
-                    return new CatalogueItem(movie.getMovieName(), "Dil", rating.getRating());
+            return movieInfo.getCatalogueItem(rating);
                 }
         ).collect(Collectors.toList());
-
-
-
-
     }
+
 }
+
